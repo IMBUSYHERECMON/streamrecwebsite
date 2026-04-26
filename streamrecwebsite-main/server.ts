@@ -54,6 +54,20 @@ try {
   }
 }
 
+if (process.env.VERCEL) {
+  const tmpYtDlp = '/tmp/yt-dlp';
+  if (!fs.existsSync(tmpYtDlp)) {
+    console.log('Downloading yt-dlp dynamically for Vercel...');
+    axios.get('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp', {
+      responseType: 'arraybuffer'
+    }).then(response => {
+      fs.writeFileSync(tmpYtDlp, response.data);
+      fs.chmodSync(tmpYtDlp, 0o755);
+      console.log('yt-dlp downloaded dynamically.');
+    }).catch(e => console.error('Dynamic yt-dlp download failed:', e.message));
+  }
+}
+
 interface StreamerRecord {
   id: string;
   name: string;
@@ -266,12 +280,20 @@ const MANUAL_STOP_COOLDOWN_MS = 90_000;
 const bundledFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : null;
 const streamlinkCandidates = [
   path.join(APP_ROOT, '.venv', 'bin', 'streamlink'),
-  path.join(path.dirname(APP_ROOT), '.venv', 'bin', 'streamlink')
+  path.join(path.dirname(APP_ROOT), '.venv', 'bin', 'streamlink'),
+  path.join(process.cwd(), '.venv', 'bin', 'streamlink'),
+  path.join(process.cwd(), 'streamrecwebsite-main', '.venv', 'bin', 'streamlink')
 ];
 const streamlinkPath = streamlinkCandidates.find((candidate) => fs.existsSync(candidate)) ?? streamlinkCandidates[0];
 
 function getRecorderDependencies() {
-  const ytDlpPath = path.join(APP_ROOT, 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp');
+  const ytDlpCandidates = [
+    '/tmp/yt-dlp',
+    path.join(APP_ROOT, 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp'),
+    path.join(process.cwd(), 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp'),
+    path.join(process.cwd(), 'streamrecwebsite-main', 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp')
+  ];
+  const ytDlpPath = ytDlpCandidates.find((candidate) => fs.existsSync(candidate)) ?? ytDlpCandidates[0];
   const ffmpegReady = Boolean(bundledFfmpegPath && fs.existsSync(bundledFfmpegPath));
   let ffmpegHealthy = false;
   if (ffmpegReady && bundledFfmpegPath) {
@@ -303,12 +325,20 @@ function getRecorderDependencies() {
 
 function getRecorderReadiness() {
   const dependencies = getRecorderDependencies();
-  const missing = Object.entries(dependencies)
+  let missing = Object.entries(dependencies)
     .filter(([, value]) => !value.ready)
     .map(([key]) => key);
 
+  if (process.env.VERCEL) {
+    missing = missing.filter(m => m !== 'streamlink');
+  }
+
+  const isReady = process.env.VERCEL 
+    ? (dependencies.yt_dlp.ready && dependencies.ffmpeg.ready)
+    : (dependencies.streamlink.ready || (dependencies.yt_dlp.ready && dependencies.ffmpeg.ready));
+
   return {
-    ready: dependencies.streamlink.ready || (dependencies.yt_dlp.ready && dependencies.ffmpeg.ready),
+    ready: isReady,
     missing,
     dependencies
   };
@@ -361,6 +391,7 @@ function isTikTokUrl(raw: string) {
 }
 
 function shouldUseStreamlink(raw: string) {
+  if (process.env.VERCEL) return false;
   return isTwitchUrl(raw) || isYouTubeUrl(raw) || isTikTokUrl(raw);
 }
 
@@ -545,7 +576,13 @@ function runExecFile(bin: string, args: string[], options: Parameters<typeof exe
 }
 
 function getRecorderBinaryPath() {
-  return path.join(APP_ROOT, 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp');
+  const ytDlpCandidates = [
+    '/tmp/yt-dlp',
+    path.join(APP_ROOT, 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp'),
+    path.join(process.cwd(), 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp'),
+    path.join(process.cwd(), 'streamrecwebsite-main', 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp')
+  ];
+  return ytDlpCandidates.find((candidate) => fs.existsSync(candidate)) ?? ytDlpCandidates[1];
 }
 
 async function fetchFixedHeyMateMeta(url: string) {
@@ -1098,6 +1135,8 @@ function startActualRecording(streamer: StreamerRecord) {
   }
 
   console.log(`[${safeName}] Starting yt-dlp check... (${normalizedUrl})`);
+  const ytDlpOverridePath = getRecorderBinaryPath();
+  
   const dlProcess = youtubedl.exec(normalizedUrl, {
     output: filePath,
     format: 'b',
@@ -1107,7 +1146,7 @@ function startActualRecording(streamer: StreamerRecord) {
     hlsUseMpegts: true,
     retries: 3,
     fragmentRetries: 3
-  } as any);
+  } as any, { execPath: ytDlpOverridePath });
 
   dlProcess.catch((_err) => {
     // Errors are surfaced via stderr/close handlers.
