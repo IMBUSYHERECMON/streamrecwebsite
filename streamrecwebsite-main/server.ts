@@ -28,10 +28,30 @@ function resolveAppRoot() {
 
 const APP_ROOT = resolveAppRoot();
 
-// Ensure data directory exists
-const DATA_DIR = path.join(APP_ROOT, 'data');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+let DATA_DIR = path.join(APP_ROOT, 'data');
+if (process.env.VERCEL) {
+  DATA_DIR = '/tmp/data';
+}
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    // If we're on Vercel, copy any existing data from the repo to /tmp/data
+    if (DATA_DIR === '/tmp/data' && fs.existsSync(path.join(APP_ROOT, 'data'))) {
+      const sourceDir = path.join(APP_ROOT, 'data');
+      for (const file of fs.readdirSync(sourceDir)) {
+        const srcFile = path.join(sourceDir, file);
+        if (fs.statSync(srcFile).isFile()) {
+          fs.copyFileSync(srcFile, path.join(DATA_DIR, file));
+        }
+      }
+    }
+  }
+} catch (error) {
+  console.warn('Failed to create data dir in APP_ROOT, falling back to /tmp/data', error);
+  DATA_DIR = '/tmp/data';
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
 }
 
 interface StreamerRecord {

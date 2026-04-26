@@ -5,7 +5,6 @@
   "outputDirectory": "streamrecwebsite-main/dist",
   "functions": {
     "streamrecwebsite-main/api/index.ts": {
-      "runtime": "nodejs22.x",
       "maxDuration": 300
     }
   },
