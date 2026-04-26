@@ -6,7 +6,7 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 300,
-      "includeFiles": "streamrecwebsite-main/{.venv,node_modules/youtube-dl-exec/bin,node_modules/ffmpeg-static}/**"
+      "includeFiles": "{streamrecwebsite-main/.venv,streamrecwebsite-main/node_modules/youtube-dl-exec/bin,streamrecwebsite-main/node_modules/ffmpeg-static,imports/fixedheymate/private}/**"
     }
   },
   "rewrites": [
