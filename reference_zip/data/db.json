@@ -1,0 +1,8 @@
+{
+  "streamers": [],
+  "recordings": [],
+  "settings": {
+    "webhook_url": "",
+    "download_dir": "data/recordings"
+  }
+}
