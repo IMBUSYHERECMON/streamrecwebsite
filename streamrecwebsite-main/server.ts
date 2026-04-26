@@ -64,7 +64,7 @@ function ensureYtDlp(): Promise<void> {
   if (!ytDlpDownloadPromise) {
     ytDlpDownloadPromise = new Promise((resolve) => {
       console.log('Downloading yt-dlp dynamically for Vercel...');
-      axios.get('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp', {
+      axios.get('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux', {
         responseType: 'arraybuffer'
       }).then(response => {
         fs.writeFileSync(tmpYtDlp, response.data);
