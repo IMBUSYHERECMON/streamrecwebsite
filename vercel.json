@@ -4,18 +4,12 @@
   "buildCommand": "cd streamrecwebsite-main && npm run build",
   "outputDirectory": "streamrecwebsite-main/dist",
   "functions": {
-    "streamrecwebsite-main/api/index.ts": {
+    "api/index.ts": {
       "maxDuration": 300
     }
   },
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/streamrecwebsite-main/api/index.ts"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/streamrecwebsite-main/api/index.ts"
-    }
+    { "source": "/api/(.*)", "destination": "/api/index.ts" },
+    { "source": "/(.*)", "destination": "/api/index.ts" }
   ]
 }
