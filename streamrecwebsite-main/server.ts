@@ -54,23 +54,31 @@ try {
   }
 }
 
-if (process.env.VERCEL) {
+let ytDlpDownloadPromise: Promise<void> | null = null;
+
+function ensureYtDlp(): Promise<void> {
+  if (!process.env.VERCEL) return Promise.resolve();
   const tmpYtDlp = '/tmp/yt-dlp';
-  if (!fs.existsSync(tmpYtDlp)) {
-    console.log('Downloading yt-dlp synchronously for Vercel...');
-    try {
-      execFileSync('curl', [
-        '-L',
-        'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp',
-        '-o',
-        tmpYtDlp
-      ], { stdio: 'inherit' });
-      fs.chmodSync(tmpYtDlp, 0o755);
-      console.log('yt-dlp downloaded synchronously.');
-    } catch (e: any) {
-      console.error('Synchronous yt-dlp download failed:', e.message);
-    }
+  if (fs.existsSync(tmpYtDlp)) return Promise.resolve();
+  
+  if (!ytDlpDownloadPromise) {
+    ytDlpDownloadPromise = new Promise((resolve) => {
+      console.log('Downloading yt-dlp dynamically for Vercel...');
+      axios.get('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp', {
+        responseType: 'arraybuffer'
+      }).then(response => {
+        fs.writeFileSync(tmpYtDlp, response.data);
+        fs.chmodSync(tmpYtDlp, 0o755);
+        console.log('yt-dlp downloaded dynamically.');
+        resolve();
+      }).catch(e => {
+        console.error('Dynamic yt-dlp download failed:', e.message);
+        ytDlpDownloadPromise = null;
+        resolve();
+      });
+    });
   }
+  return ytDlpDownloadPromise;
 }
 
 interface StreamerRecord {
@@ -328,7 +336,8 @@ function getRecorderDependencies() {
   };
 }
 
-function getRecorderReadiness() {
+async function getRecorderReadiness() {
+  await ensureYtDlp();
   const dependencies = getRecorderDependencies();
   let missing = Object.entries(dependencies)
     .filter(([, value]) => !value.ready)
@@ -580,7 +589,8 @@ function runExecFile(bin: string, args: string[], options: Parameters<typeof exe
   });
 }
 
-function getRecorderBinaryPath() {
+async function getRecorderBinaryPath() {
+  await ensureYtDlp();
   const ytDlpCandidates = [
     '/tmp/yt-dlp',
     path.join(APP_ROOT, 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp'),
@@ -597,7 +607,8 @@ async function fetchFixedHeyMateMeta(url: string) {
     args.push('--cookies', cookiesPath);
   }
   args.push('--js-runtimes', `node:${process.execPath}`, url);
-  const { stdout } = await runExecFile(getRecorderBinaryPath(), args);
+  const binPath = await getRecorderBinaryPath();
+  const { stdout } = await runExecFile(binPath, args);
   return JSON.parse(stdout);
 }
 
@@ -661,7 +672,8 @@ async function startFixedHeyMateArchive(url: string) {
   }
   args.push('-f', 'best[ext=mp4]/best', '-o', filePath, url);
 
-  const proc = execFile(getRecorderBinaryPath(), args, { maxBuffer: 10 * 1024 * 1024 }, (error) => {
+  const binPath = await getRecorderBinaryPath();
+  const proc = execFile(binPath, args, { maxBuffer: 10 * 1024 * 1024 }, (error) => {
     if (error) {
       updateFixedHeyMateVideo(record.id, {
         status: 'error',
@@ -1031,9 +1043,10 @@ function finalizeRecordingProcess(
   db.save();
 }
 
-function startActualRecording(streamer: StreamerRecord) {
+async function startActualRecording(streamer: StreamerRecord) {
   if (activeDownloads.has(streamer.id)) return; // Already recording/checking
 
+  await ensureYtDlp();
   const dependencies = getRecorderDependencies();
   const required = getRequiredRecorderForUrl(streamer.url);
   const missing = required.filter((key) => !dependencies[key].ready);
@@ -1140,7 +1153,7 @@ function startActualRecording(streamer: StreamerRecord) {
   }
 
   console.log(`[${safeName}] Starting yt-dlp check... (${normalizedUrl})`);
-  const ytDlpOverridePath = getRecorderBinaryPath();
+  const ytDlpOverridePath = await getRecorderBinaryPath();
   
   const dlProcess = youtubedl.exec(normalizedUrl, {
     output: filePath,
@@ -1253,8 +1266,8 @@ async function createApp() {
 
   // --- API ROUTES ---
 
-  app.get('/api/status', (req, res) => {
-    const recorder = getRecorderReadiness();
+  app.get('/api/status', async (req, res) => {
+    const recorder = await getRecorderReadiness();
     res.json({
       counts: {
         live: db.data.streamers.filter((s: StreamerRecord) => s.state === 'live').length,
@@ -1300,11 +1313,11 @@ async function createApp() {
     res.json({ success: true });
   });
 
-  app.post('/api/streamers/:id/start', (req, res) => {
+  app.post('/api/streamers/:id/start', async (req, res) => {
     const streamer = db.data.streamers.find((s: StreamerRecord) => s.id === req.params.id);
     if (!streamer) return res.status(404).json({ error: 'Streamer not found' });
 
-    const recorder = getRecorderReadiness();
+    const recorder = await getRecorderReadiness();
     const required = getRequiredRecorderForUrl(streamer.url);
     const missing = required.filter((key) => !recorder.dependencies[key].ready);
     if (missing.length > 0) {
