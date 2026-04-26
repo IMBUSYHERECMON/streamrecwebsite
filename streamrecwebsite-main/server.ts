@@ -1155,7 +1155,8 @@ async function startActualRecording(streamer: StreamerRecord) {
   console.log(`[${safeName}] Starting yt-dlp check... (${normalizedUrl})`);
   const ytDlpOverridePath = await getRecorderBinaryPath();
   
-  const dlProcess = youtubedl.exec(normalizedUrl, {
+  const customYtDlp = youtubedl.create(ytDlpOverridePath);
+  const dlProcess = customYtDlp.exec(normalizedUrl, {
     output: filePath,
     format: 'b',
     ffmpegLocation: dependencies.ffmpeg.path || undefined,
@@ -1164,7 +1165,7 @@ async function startActualRecording(streamer: StreamerRecord) {
     hlsUseMpegts: true,
     retries: 3,
     fragmentRetries: 3
-  } as any, { execPath: ytDlpOverridePath });
+  } as any);
 
   dlProcess.catch((_err) => {
     // Errors are surfaced via stderr/close handlers.
