@@ -57,14 +57,19 @@ try {
 if (process.env.VERCEL) {
   const tmpYtDlp = '/tmp/yt-dlp';
   if (!fs.existsSync(tmpYtDlp)) {
-    console.log('Downloading yt-dlp dynamically for Vercel...');
-    axios.get('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp', {
-      responseType: 'arraybuffer'
-    }).then(response => {
-      fs.writeFileSync(tmpYtDlp, response.data);
+    console.log('Downloading yt-dlp synchronously for Vercel...');
+    try {
+      execFileSync('curl', [
+        '-L',
+        'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp',
+        '-o',
+        tmpYtDlp
+      ], { stdio: 'inherit' });
       fs.chmodSync(tmpYtDlp, 0o755);
-      console.log('yt-dlp downloaded dynamically.');
-    }).catch(e => console.error('Dynamic yt-dlp download failed:', e.message));
+      console.log('yt-dlp downloaded synchronously.');
+    } catch (e: any) {
+      console.error('Synchronous yt-dlp download failed:', e.message);
+    }
   }
 }
 
