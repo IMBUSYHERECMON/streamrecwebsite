@@ -1,0 +1,45 @@
+# TubeVault TODO
+
+- [x] Deploy tube-vault React frontend from GitHub repo
+- [x] Dark cinematic theme (Outfit/Space Mono fonts, dark background)
+- [x] Library page with video grid, search, channel filter
+- [x] Video player page with related videos
+- [x] Settings page
+- [x] System Online indicator in sidebar
+- [x] Upload 17 archived MP4 videos to CDN
+- [x] YouTube cookies applied (client/public/cookies.txt)
+- [x] Upgrade to full-stack (Node.js + Express + tRPC + PostgreSQL)
+- [x] Install yt-dlp and ffmpeg server-side
+- [x] Database schema: videos table with expiry, CDN URL, metadata
+- [x] Seed 17 existing CDN videos into database
+- [x] Backend API: list, get, fetchMeta, archive, delete, purgeExpired
+- [x] Archive page: paste YouTube URL, preview metadata, download & archive
+- [x] Library page: pulls from DB, expiry countdown badges, download button per video
+- [x] VideoPlayer page: pulls from DB, download button, expiry info, description, related videos
+- [x] Settings page: vault stats (video count, storage, expiring soon), channel list, purge expired
+- [x] Auto-delete after 30 days (expiresAt field + purgeExpired endpoint)
+- [x] Archive nav link in sidebar
+- [x] Increase tRPC query staleTime so data is cached and not re-fetched on tab switch
+- [x] Replace video elements in library grid with static thumbnails (no preload)
+- [x] Add loading="lazy" to all thumbnail images
+- [x] Add Intersection Observer lazy loading for video thumbnails (native loading=lazy used instead)
+- [x] Fix yt-dlp ENOENT: install yt-dlp in project and use correct binary path
+- [x] Fix lag: increase tRPC staleTime to cache data between tab switches
+- [x] Replace video preload elements in library grid with lazy-loaded thumbnail images
+- [x] Fix YTDlpWrap is not a constructor error (ESM/CJS interop issue)
+- [x] Fix yt-dlp SRE module mismatch: install standalone binary instead of Python package
+- [x] Fix yt-dlp path conflict: /usr/local/bin/yt-dlp is a directory not a binary, use different path
+- [x] Security: move cookies.txt out of client/public to private/ so it's not publicly accessible
+- [x] Reliability: wrap temp file cleanup in try/finally in archiver.ts
+- [x] Perf: cache getNodeBin() result at module level like _ytdlpBin
+- [x] Perf: stream S3 upload with createReadStream instead of buffering entire file in RAM
+- [x] Perf: make archive async (return videoId immediately, download in background, frontend polls)
+- [x] Perf: add DB connection pooling in server/db.ts
+- [x] Perf: add pagination and index on videos(status, archivedAt DESC) in DB
+- [x] Security: add rate limiting on archive and fetchMeta endpoints
+- [x] Architecture: wrap root render in ErrorBoundary in main.tsx
+- [x] Architecture: centralize commonFlags() as module-level cached promise
+- [x] Frontend: add skeleton loading cards for Library grid
+- [x] Frontend: add SSE endpoint for real-time archive progress (polling approach used instead)
+- [x] Frontend: fix CLS by adding width/height to all thumbnail img tags
+- [x] Frontend: poll video status until done after async archive

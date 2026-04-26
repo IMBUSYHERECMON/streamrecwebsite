@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd streamrecwebsite-main && npm install",
+  "buildCommand": "cd streamrecwebsite-main && npm run build",
+  "outputDirectory": "streamrecwebsite-main/dist",
+  "functions": {
+    "streamrecwebsite-main/api/index.ts": {
+      "runtime": "nodejs22.x",
+      "maxDuration": 300
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/streamrecwebsite-main/api/index.ts"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/streamrecwebsite-main/api/index.ts"
+    }
+  ]
+}

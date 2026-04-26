@@ -1,0 +1,5 @@
+{
+  "startupCommands": [
+    "cd /home/user/computer/streamrecwebsite-site/repo && npm install; cd /home/user/computer/streamrecwebsite-site/repo && npm run dev"
+  ]
+}
